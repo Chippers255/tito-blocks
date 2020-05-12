@@ -1,32 +1,27 @@
 package main
 
 import (
-	"crypto/md5"
-	"crypto/sha1"
-	"crypto/sha256"
 	"fmt"
+	"net/http"
+	"gorilla/mux"
 )
 
 func main() {
-	s := "Foo"
+	router := mux.NewRouter()
 
-	md5 := md5.Sum([]byte(s))
-	sha1 := sha1.Sum([]byte(s))
-	sha256 := sha256.Sum256([]byte(s))
+	// Dispatch map for CRUD operations.
+	router.HandleFunc("/", ClichesAll).Methods("GET")
+	router.HandleFunc("/cliches", ClichesAll).Methods("GET")
+	router.HandleFunc("/cliches/{id:[0-9]+}", ClichesOne).Methods("GET")
 
-	fmt.Printf("%x\n", md5)
-	fmt.Printf("%x\n", sha1)
-	fmt.Printf("%x\n", sha256)
-	fmt.Println("-----------------------------------------------------")
-	b := Block{
-		Index:        1,
-		Proof:        "sdfd",
-		Timestamp:    "asdfasdf",
-		Transactions: nil,
-		PreviousHash: "adsfasdf",
-	}
+	router.HandleFunc("/cliches", ClichesCreate).Methods("POST")
+	router.HandleFunc("/cliches/{id:[0-9]+}", ClichesEdit).Methods("PUT")
+	router.HandleFunc("/cliches/{id:[0-9]+}", ClichesDelete).Methods("DELETE")
 
-	a := Hash(b)
-	fmt.Println(b)
-	fmt.Println(a)
+	http.Handle("/", router) // enable the router
+
+	// Start the server.
+	port := ":8888"
+	fmt.Println("\nListening on port " + port)
+	http.ListenAndServe(port, router); // mux.Router now in play
 }
