@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"time"
 )
 
@@ -44,39 +45,32 @@ type Server interface {
 	ValidProof(lastProof string, proof string, lastHash string) bool
 }
 
-func (b Blockchain) LastBlock() Block {
+func (b *Blockchain) LastBlock() Block {
 	return b.Chain[len(b.Chain)-1]
 }
 
-func (b Blockchain) NewTransaction(sender string, receiver string, amount float32) int {
-	newTransaction := Transaction{
-		Sender:   sender,
-		Amount:   amount,
-		Receiver: receiver,
-	}
-
+func (b *Blockchain) NewTransaction(newTransaction Transaction) int {
 	b.CurrentTransactions = append(b.CurrentTransactions, newTransaction)
 
 	return b.LastBlock().Index + 1
 }
 
-func (b Blockchain) NewBlock(proof string, previousHash string) Block {
+func (b *Blockchain) NewBlock(proof string, previousHash string) Block {
 	block := Block{
 		Index:        len(b.Chain) + 1,
 		Proof:        proof,
 		Timestamp:    time.Now().Unix(),
 		Transactions: b.CurrentTransactions,
-		PreviousHash: "",
+		PreviousHash: previousHash,
 	}
 
 	b.CurrentTransactions = nil
-
 	b.Chain = append(b.Chain, block)
 
 	return block
 }
 
-func (b Blockchain) ProofOfWork(lastProof string) string {
+func (b *Blockchain) ProofOfWork(lastProof string) string {
 	proof := 0
 
 	for !ValidProof(lastProof, string(proof)) {
@@ -84,6 +78,25 @@ func (b Blockchain) ProofOfWork(lastProof string) string {
 	}
 
 	return string(proof)
+}
+
+type Resp struct {
+	Message string `json:"message"`
+}
+
+func (b *Blockchain) NewTransactionEndpoint(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	var transaction Transaction
+
+	_ = json.NewDecoder(r.Body).Decode(transaction)
+	index := b.NewTransaction(transaction)
+
+	response := Resp{
+		Message: fmt.Sprintf("Transaction will be added to Block %d", index),
+	}
+
+	_ = json.NewEncoder(w).Encode(&response)
 }
 
 func ValidProof(lastProof string, proof string) bool {
@@ -109,11 +122,11 @@ func Hash(block Block) string {
 
 func NewBlockchain() Blockchain {
 	blockchain := Blockchain{
-		Chain:               nil,
-		CurrentTransactions: nil,
+		Chain:               []Block{},
+		CurrentTransactions: []Transaction{},
 	}
 
-	blockchain.NewBlock("100", "1")
+	_ = blockchain.NewBlock("100", "1")
 
 	return blockchain
 }
