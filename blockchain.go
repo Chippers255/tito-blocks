@@ -11,7 +11,7 @@ import (
 type Transaction struct {
 	Sender   string  `json:"sender"`
 	Amount   float32 `json:"amount"`
-	Receiver string  `json:"receiver"`
+	Recipient string  `json:"recipient"`
 }
 
 type Message struct {
@@ -77,7 +77,7 @@ func (b *Blockchain) ProofOfWork(lastProof string) string {
 		proof += 1
 	}
 
-	return string(proof)
+	return fmt.Sprintf("%d", proof)
 }
 
 type Resp struct {
@@ -89,7 +89,10 @@ func (b *Blockchain) NewTransactionEndpoint(w http.ResponseWriter, r *http.Reque
 
 	var transaction Transaction
 
-	_ = json.NewDecoder(r.Body).Decode(transaction)
+	err := json.NewDecoder(r.Body).Decode(&transaction)
+	if err != nil {
+		fmt.Println(err)
+	}
 	index := b.NewTransaction(transaction)
 
 	response := Resp{

@@ -33,7 +33,7 @@ func (b *Blockchain) mine(w http.ResponseWriter, r *http.Request) {
 	nt := Transaction{
 		Sender:   "0",
 		Amount:   1,
-		Receiver: viper.GetString("NODE_ID"),
+		Recipient: viper.GetString("NODE_ID"),
 	}
 
 	b.NewTransaction(nt)
