@@ -5,12 +5,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 )
 
+type Node struct{}
+
 type Transaction struct {
-	Sender   string  `json:"sender"`
-	Amount   float32 `json:"amount"`
+	Sender    string  `json:"sender"`
+	Amount    float32 `json:"amount"`
 	Recipient string  `json:"recipient"`
 }
 
@@ -29,13 +32,14 @@ type Block struct {
 }
 
 type Blockchain struct {
-	Chain               []Block       `json:"chain"`
-	CurrentTransactions []Transaction `json:"current_transactions"`
+	Chain               []Block         `json:"chain"`
+	CurrentTransactions []Transaction   `json:"current_transactions"`
+	Nodes               map[string]Node `json:"nodes"`
 }
 
 type Server interface {
-	RegisterNode()
-	ValidChain() bool
+	RegisterNode(address string)
+	ValidChain(chain []Block) bool
 	ResolveConflicts()
 	NewBlock() Block
 	NewTransaction(sender string, receiver string, amount float32) int
@@ -43,6 +47,46 @@ type Server interface {
 	Hash(block Block) string
 	WorkProof(last Block) string
 	ValidProof(lastProof string, proof string, lastHash string) bool
+}
+
+func (b *Blockchain) RegisterNode(address string) {
+	parsedUrl, _ := url.Parse(address)
+
+	b.Nodes[parsedUrl.Host] = Node{}
+}
+
+func (b *Blockchain) ValidChain(chain []Block) bool {
+	lastBlock := chain[0]
+	currentIndex := 1
+
+	for currentIndex < len(chain) {
+		block := chain[currentIndex]
+		fmt.Println(lastBlock)
+		fmt.Println(block)
+		fmt.Println("-----------------------------------------------------------")
+
+		if block.PreviousHash != Hash(lastBlock) {
+			return false
+		}
+
+		if !ValidProof(lastBlock.Proof, block.Proof) {
+			return false
+		}
+
+		lastBlock = block
+		currentIndex += 1
+	}
+
+	return true
+}
+
+func (b *Blockchain) ResolveConflicts()  {
+	neighbours := b.Nodes
+	newChain := nil
+
+	maxLength := len(b.Chain)
+
+
 }
 
 func (b *Blockchain) LastBlock() Block {
@@ -127,6 +171,7 @@ func NewBlockchain() Blockchain {
 	blockchain := Blockchain{
 		Chain:               []Block{},
 		CurrentTransactions: []Transaction{},
+		Nodes:               map[string]Node{},
 	}
 
 	_ = blockchain.NewBlock("100", "1")

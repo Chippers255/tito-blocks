@@ -31,8 +31,8 @@ func (b *Blockchain) mine(w http.ResponseWriter, r *http.Request) {
 	proof := b.ProofOfWork(lastProof)
 
 	nt := Transaction{
-		Sender:   "0",
-		Amount:   1,
+		Sender:    "0",
+		Amount:    1,
 		Recipient: viper.GetString("NODE_ID"),
 	}
 
