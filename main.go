@@ -62,6 +62,24 @@ func (b *Blockchain) chain(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(&response)
 }
 
+func (b *Blockchain) newTransaction(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	var transaction Transaction
+
+	err := json.NewDecoder(r.Body).Decode(&transaction)
+	if err != nil {
+		fmt.Println(err)
+	}
+	index := b.NewTransaction(transaction)
+
+	response := Resp{
+		Message: fmt.Sprintf("Transaction will be added to Block %d", index),
+	}
+
+	_ = json.NewEncoder(w).Encode(&response)
+}
+
 func main() {
 	nodeID := strings.ReplaceAll(uuid.New().String(), "-", "")
 	viper.Set("NODE_ID", nodeID)
@@ -72,7 +90,7 @@ func main() {
 	// Dispatch map for CRUD operations.
 	router.HandleFunc("/mine", b.mine).Methods("GET")
 	router.HandleFunc("/chain", b.chain).Methods("GET")
-	router.HandleFunc("/transactions/new", b.NewTransactionEndpoint).Methods("POST")
+	router.HandleFunc("/transactions/new", b.newTransaction).Methods("POST")
 
 	// Start the server.
 	port := ":5000"

@@ -80,13 +80,35 @@ func (b *Blockchain) ValidChain(chain []Block) bool {
 	return true
 }
 
-func (b *Blockchain) ResolveConflicts()  {
+func (b *Blockchain) ResolveConflicts() bool {
 	neighbours := b.Nodes
-	newChain := nil
+	var newChain []Block
 
 	maxLength := len(b.Chain)
 
+	for _, node := range neighbours {
+		response, _ := http.Get(fmt.Sprintf("http://%s/chain", node))
 
+		if response.StatusCode == 200 {
+			var respy resp2
+			_ = json.NewDecoder(response.Body).Decode(&respy)
+
+			length := respy.Length
+			chain := respy.Chain
+
+			if length > maxLength && b.ValidChain(chain) {
+				maxLength = length
+				newChain = chain
+			}
+		}
+	}
+
+	if newChain != nil {
+		b.Chain = newChain
+		return true
+	}
+
+	return false
 }
 
 func (b *Blockchain) LastBlock() Block {
@@ -126,24 +148,6 @@ func (b *Blockchain) ProofOfWork(lastProof string) string {
 
 type Resp struct {
 	Message string `json:"message"`
-}
-
-func (b *Blockchain) NewTransactionEndpoint(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	var transaction Transaction
-
-	err := json.NewDecoder(r.Body).Decode(&transaction)
-	if err != nil {
-		fmt.Println(err)
-	}
-	index := b.NewTransaction(transaction)
-
-	response := Resp{
-		Message: fmt.Sprintf("Transaction will be added to Block %d", index),
-	}
-
-	_ = json.NewEncoder(w).Encode(&response)
 }
 
 func ValidProof(lastProof string, proof string) bool {
