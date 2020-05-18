@@ -80,6 +80,70 @@ func (b *Blockchain) newTransaction(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(&response)
 }
 
+type registerRequest struct {
+	Nodes []string `json:"nodes"`
+}
+
+type registerResponse struct {
+	Message string `json:"message"`
+	TotalNodes map[string]Node `json:"total_nodes"`
+}
+
+func (b *Blockchain) register(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	var request registerRequest
+
+	err := json.NewDecoder(r.Body).Decode(&request)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	nodes := request.Nodes
+	// TODO: Handle and empty request brother
+	if nodes == nil {
+		fmt.Println("Error: Please supply a valid list of nodes")
+	}
+
+	for _, node := range nodes {
+		b.RegisterNode(node)
+	}
+
+	response := registerResponse{
+		Message:    "New nodes have been added",
+		TotalNodes: b.Nodes,
+	}
+
+	_ = json.NewEncoder(w).Encode(&response)
+}
+
+type consensusResponse struct {
+	Message string `json:"message"`
+	Chain []Block `json:"chain"`
+}
+
+func (b *Blockchain) consensus(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	replaced := b.ResolveConflicts()
+
+	if replaced {
+		response := consensusResponse{
+			Message: "Our chain was replaced",
+			Chain:   b.Chain,
+		}
+
+		_ = json.NewEncoder(w).Encode(&response)
+	} else {
+		response := consensusResponse{
+			Message: "Our chain is authoritative",
+			Chain:   b.Chain,
+		}
+
+		_ = json.NewEncoder(w).Encode(&response)
+	}
+}
+
 func main() {
 	nodeID := strings.ReplaceAll(uuid.New().String(), "-", "")
 	viper.Set("NODE_ID", nodeID)
@@ -91,6 +155,8 @@ func main() {
 	router.HandleFunc("/mine", b.mine).Methods("GET")
 	router.HandleFunc("/chain", b.chain).Methods("GET")
 	router.HandleFunc("/transactions/new", b.newTransaction).Methods("POST")
+	router.HandleFunc("/nodes/register", b.register).Methods("POST")
+	router.HandleFunc("/nodes/resolve", b.consensus).Methods("Get")
 
 	// Start the server.
 	port := ":5000"
